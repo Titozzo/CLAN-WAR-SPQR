@@ -88,12 +88,9 @@ button, select, input {
   font-weight: bold;
 }
 
-#warmap {
-  display: block;
-}
-
-input:disabled {
+.war-row input:disabled {
   background: #eee;
+  cursor: not-allowed;
 }
 </style>
 </head>
@@ -169,45 +166,50 @@ let warSize = 0;
 
 document.addEventListener("DOMContentLoaded", () => {
   const spqrLogoData = localStorage.getItem('spqrLogoData');
-  if(spqrLogoData){
+  if (spqrLogoData) {
     const img = document.getElementById('spqrLogo');
     img.src = spqrLogoData;
     img.style.display = 'block';
   }
 });
 
-function login(type){
-  if(type === 'admin' && document.getElementById("adminPass").value === ADMIN_PASSWORD){
+function login(type) {
+  if (type === 'admin' && document.getElementById("adminPass").value === ADMIN_PASSWORD) {
     isAdmin = true;
-  } else if(type === 'member' && document.getElementById("memberPass").value === MEMBER_PASSWORD){
+  } else if (type === 'member' && document.getElementById("memberPass").value === MEMBER_PASSWORD) {
     isMember = true;
   } else {
     alert("Wrong password");
     return;
   }
+
   document.getElementById("loginBox").style.display = "none";
   document.getElementById("warControls").style.display = isAdmin ? "block" : "none";
+
+  document.getElementById("warMap").style.display = "block";
+
   loadWarFromStorage();
 }
 
-function startWar(){
+function startWar() {
   warSize = parseInt(document.getElementById("warSize").value);
   localStorage.setItem("warSize", warSize);
   generateWarMap();
   saveWarData();
 }
 
-function generateWarMap(){
+function generateWarMap() {
   const map = document.getElementById("warMap");
   map.innerHTML = "";
-  for(let i=1; i<=warSize; i++){
+  for (let i = 1; i <= warSize; i++) {
     map.appendChild(createRow(i));
   }
 }
 
-function createRow(n){
+function createRow(n) {
   const row = document.createElement("div");
   row.className = "war-row";
+
   row.innerHTML = `
     <div class="base">
       <strong>SPQR #${n}</strong>
@@ -232,74 +234,105 @@ function createRow(n){
       <img style="display:none">
     </div>
   `;
+
   return row;
 }
 
-function enemyOptions(){
+function enemyOptions() {
   let o = "<option>-- target --</option>";
-  for(let i=1; i<=warSize; i++) o += `<option>Enemy #${i}</option>`;
+  for (let i = 1; i <= warSize; i++) o += `<option>Enemy #${i}</option>`;
   return o;
 }
 
-function loadImage(input){
+function loadImage(input) {
   const img = input.parentElement.nextElementSibling;
   img.src = URL.createObjectURL(input.files[0]);
   img.style.display = "block";
   saveWarData();
 }
 
-function loadClanLogo(input, id, storageKey){
+function loadClanLogo(input, id, storageKey) {
   const img = document.getElementById(id);
   img.src = URL.createObjectURL(input.files[0]);
   img.style.display = "block";
-  if(storageKey === 'spqrLogoData') localStorage.setItem(storageKey, img.src);
-  if(storageKey === 'enemyLogoData') saveWarData();
+  if (storageKey === 'spqrLogoData') localStorage.setItem(storageKey, img.src);
+  if (storageKey === 'enemyLogoData') saveWarData();
 }
 
-function updateEnemyName(){
+function updateEnemyName() {
   document.getElementById("enemyName").textContent = document.getElementById("enemyNameInput").value || "Enemy Clan";
   saveWarData();
 }
 
-function saveWarData(){
+function saveWarData() {
   const data = {
     warSize,
-    enemyName: document.getElementById("enemyNameInput") ? document.getElementById("enemyNameInput").value : "Enemy Clan",
+    enemyName: document.getElementById("enemyNameInput")
+      ? document.getElementById("enemyNameInput").value
+      : "Enemy Clan",
     enemyLogo: document.getElementById("enemyLogo").src || "",
     rows: []
   };
+
   document.querySelectorAll(".war-row").forEach(row => {
     data.rows.push({
-      spqrName: row.querySelector(".base input") ? row.querySelector(".base input").value : "",
-      spqrImg: row.querySelector(".base img") ? row.querySelector(".base img").src : "",
-      enemyName: row.querySelector(".base.right input") ? row.querySelector(".base.right input").value : "",
-      enemyImg: row.querySelector(".base.right img") ? row.querySelector(".base.right img").src : "",
+      spqrName: row.querySelector(".base input")
+        ? row.querySelector(".base input").value
+        : "",
+      spqrImg: row.querySelector(".base img")
+        ? row.querySelector(".base img").src
+        : "",
+      enemyName: row.querySelector(".base.right input")
+        ? row.querySelector(".base.right input").value
+        : "",
+      enemyImg: row.querySelector(".base.right img")
+        ? row.querySelector(".base.right img").src
+        : "",
       target: row.querySelector(".middle select").value
     });
   });
+
   localStorage.setItem("warData", JSON.stringify(data));
 }
 
-function loadWarFromStorage(){
+function loadWarFromStorage() {
   const data = JSON.parse(localStorage.getItem("warData"));
-  if(!data) return;
+  if (!data) return;
+
   warSize = data.warSize;
   document.getElementById("warSize").value = warSize;
+
   generateWarMap();
-  if(data.enemyLogo) document.getElementById("enemyLogo").src = data.enemyLogo;
-  if(document.getElementById("enemyNameInput")) document.getElementById("enemyNameInput").value = data.enemyName;
-  document.querySelectorAll(".war-row").forEach((row, i) => {
-    if(data.rows[i]){
-      if(row.querySelector(".base input")) row.querySelector(".base input").value = data.rows[i].spqrName;
-      if(row.querySelector(".base img")) row.querySelector(".base img").src = data.rows[i].spqrImg;
-      if(row.querySelector(".base.right input")) row.querySelector(".base.right input").value = data.rows[i].enemyName;
-      if(row.querySelector(".base.right img")) row.querySelector(".base.right img").src = data.rows[i].enemyImg;
-      row.querySelector(".middle select").value = data.rows[i].target;
+
+  if (data.enemyLogo) {
+    document.getElementById("enemyLogo").src = data.enemyLogo;
+    document.getElementById("enemyLogo").style.display = "block";
+  }
+
+  if (document.getElementById("enemyNameInput")) {
+    document.getElementById("enemyNameInput").value = data.enemyName;
+    document.getElementById("enemyName").textContent = data.enemyName;
+  }
+
+  const rows = document.querySelectorAll(".war-row");
+  data.rows.forEach((r, i) => {
+    if (rows[i]) {
+      if (rows[i].querySelector(".base input")) rows[i].querySelector(".base input").value = r.spqrName;
+      if (rows[i].querySelector(".base img") && r.spqrImg) {
+        rows[i].querySelector(".base img").src = r.spqrImg;
+        rows[i].querySelector(".base img").style.display = "block";
+      }
+      if (rows[i].querySelector(".base.right input")) rows[i].querySelector(".base.right input").value = r.enemyName;
+      if (rows[i].querySelector(".base.right img") && r.enemyImg) {
+        rows[i].querySelector(".base.right img").src = r.enemyImg;
+        rows[i].querySelector(".base.right img").style.display = "block";
+      }
+      rows[i].querySelector(".middle select").value = r.target;
     }
   });
 }
 
-function deleteWar(){
+function deleteWar() {
   localStorage.removeItem("warData");
   localStorage.removeItem("enemyLogoData");
   localStorage.removeItem("warSize");
