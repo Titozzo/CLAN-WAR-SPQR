@@ -1,140 +1,333 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Clan War</title>
-
+<title>SPQR Clan War</title>
 <style>
-body { font-family: Arial; background:#e5e9ee; padding:10px; }
-.hidden { display:none; }
-
-header {
-  display:flex; justify-content:space-between;
-  background:#2c3e50; color:white;
-  padding:10px; border-radius:8px;
+body {
+  font-family: Arial, sans-serif;
+  background: #dfe6eb;
+  padding: 15px;
 }
 
-.clan {
-  width:45%; display:flex; align-items:center; gap:10px;
+#loginBox {
+  text-align: center;
+  margin-bottom: 10px;
 }
 
-.clan img { width:60px; height:60px; object-fit:cover; background:white; }
-
-.controls, .login {
-  text-align:center; margin:10px 0;
+button, select, input {
+  padding: 5px;
+  margin: 4px;
 }
 
-.row {
-  display:flex; align-items:center;
-  background:white; margin-top:5px;
-  padding:5px; border-radius:6px;
+.admin-only, .member-only {
+  display: none;
 }
 
-.base { width:40%; }
-.base img { width:70px; height:70px; object-fit:cover; display:block; }
+.war-container {
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+}
 
-.middle { width:20%; text-align:center; }
+.header {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px;
+  background: #2c3e50;
+  color: white;
+  align-items: center;
+}
 
-input, select, button { margin:3px; }
+.clan-header {
+  width: 45%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.clan-header.right {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.clan-header img {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  background: white;
+  border-radius: 6px;
+}
+
+.war-row {
+  display: flex;
+  align-items: center;
+  border-top: 1px solid #ddd;
+  padding: 8px;
+}
+
+.base {
+  width: 40%;
+}
+
+.base.right {
+  text-align: right;
+}
+
+.base img {
+  width: 75px;
+  height: 75px;
+  object-fit: cover;
+  border: 1px solid #ccc;
+  margin-top: 5px;
+}
+
+.middle {
+  width: 20%;
+  text-align: center;
+  font-weight: bold;
+}
+
+#warControls {
+  text-align: center;
+  margin-bottom: 10px;
+}
 </style>
 </head>
-
 <body>
 
-<div class="login">
-  <h3>Login</h3>
-  <input id="pass" type="password" placeholder="Password">
-  <button onclick="login()">Login</button>
+<div id="loginBox">
+  <h1>SPQR WAR</h1>
+  <div>
+    <h3>Admin Login</h3>
+    <input type="password" id="adminPass" placeholder="Password">
+    <button onclick="login('admin')">Login</button>
+  </div>
+  <div>
+    <h3>Members Login</h3>
+    <input type="password" id="memberPass" placeholder="Password">
+    <button onclick="login('member')">Login</button>
+  </div>
 </div>
 
-<div class="controls hidden" id="adminControls">
+<div id="warControls" class="admin-only">
   War Size:
-  <select id="size">
-    <option>10</option><option>15</option><option>20</option>
-    <option>25</option><option>30</option><option>35</option>
-    <option>40</option><option>45</option><option>50</option>
+  <select id="warSize">
+    <option>10</option>
+    <option>15</option>
+    <option>20</option>
+    <option>25</option>
+    <option>30</option>
+    <option>35</option>
+    <option>40</option>
+    <option>45</option>
+    <option>50</option>
   </select>
-  <button onclick="createWar()">Start War</button>
+  <button onclick="startWar()">Start War</button>
+  <button onclick="deleteWar()">Delete War</button>
 </div>
 
-<header>
-  <div class="clan">
-    <img id="ourLogo">
-    <div>
-      <input id="ourName" value="SPQR">
-      <input type="file" onchange="loadImg(this,'ourLogo')">
+<div class="war-container">
+
+  <div class="header">
+    <div class="clan-header">
+      <img id="spqrLogo" style="display:none">
+      <div>
+        <strong>SPQR</strong><br>
+        <span class="admin-only">
+          Logo: <input type="file" accept="image/*" onchange="loadClanLogo(this,'spqrLogo','spqrLogoData')">
+        </span>
+      </div>
+    </div>
+
+    <div class="clan-header right">
+      <div>
+        <strong id="enemyName">Enemy Clan</strong><br>
+        <span class="admin-only">
+          Name:
+          <input id="enemyNameInput" placeholder="Enemy name" oninput="updateEnemyName()"><br>
+          Logo:
+          <input type="file" accept="image/*" onchange="loadClanLogo(this,'enemyLogo','enemyLogoData')">
+        </span>
+      </div>
+      <img id="enemyLogo" style="display:none">
     </div>
   </div>
 
-  <div class="clan" style="justify-content:flex-end;">
-    <div>
-      <input id="enemyName" value="Enemy Clan">
-      <input type="file" onchange="loadImg(this,'enemyLogo')">
-    </div>
-    <img id="enemyLogo">
-  </div>
-</header>
-
-<div id="war"></div>
+  <div id="warMap"></div>
+</div>
 
 <script>
-const ADMIN = "ILikeFeet";
-const MEMBER = "ForzaLazio";
-let role = "viewer";
+const ADMIN_PASSWORD = "ILikeFeet";
+const MEMBER_PASSWORD = "ForzaLazio";
+
+let isAdmin = false;
+let isMember = false;
 let warSize = 0;
 
-function login(){
-  const p = document.getElementById("pass").value;
-  if(p===ADMIN) role="admin";
-  else if(p===MEMBER) role="member";
-  document.querySelector(".login").classList.add("hidden");
-  if(role==="admin") document.getElementById("adminControls").classList.remove("hidden");
+// Load persistent SPQR name/logo
+document.addEventListener("DOMContentLoaded", () => {
+  const spqrLogoData = localStorage.getItem('spqrLogoData');
+  if(spqrLogoData){
+    const img = document.getElementById('spqrLogo');
+    img.src = spqrLogoData;
+    img.style.display = 'block';
+  }
+});
+
+// Login function
+function login(type){
+  if(type === 'admin' && document.getElementById("adminPass").value === ADMIN_PASSWORD){
+    isAdmin = true;
+  } else if(type === 'member' && document.getElementById("memberPass").value === MEMBER_PASSWORD){
+    isMember = true;
+  } else{
+    alert("Wrong password");
+    return;
+  }
+  document.getElementById("loginBox").style.display = "none";
+  toggleViews();
+  loadWarFromStorage();
 }
 
-function createWar(){
-  warSize = document.getElementById("size").value;
-  const w = document.getElementById("war");
-  w.innerHTML = "";
-  for(let i=1;i<=warSize;i++){
-    w.innerHTML += row(i);
+function toggleViews(){
+  document.querySelectorAll(".admin-only").forEach(el => el.style.display = isAdmin ? "block" : "none");
+  document.querySelectorAll(".member-only").forEach(el => el.style.display = isMember ? "block" : "none");
+}
+
+// Start war
+function startWar(){
+  warSize = parseInt(document.getElementById("warSize").value);
+  localStorage.setItem("warSize", warSize);
+  generateWarMap();
+  saveWarData();
+}
+
+// Generate war rows
+function generateWarMap(){
+  const map = document.getElementById("warMap");
+  map.innerHTML = "";
+  for(let i=1; i<=warSize; i++){
+    map.appendChild(createRow(i));
   }
 }
 
-function row(i){
-  return `
-  <div class="row">
+// Create a single row
+function createRow(n){
+  const row = document.createElement("div");
+  row.className = "war-row";
+
+  row.innerHTML = `
     <div class="base">
-      <b>#${i}</b><br>
-      ${role==="admin"?`<input placeholder="Name"><input type="file" onchange="loadNext(this)">`:""}
-      <img>
+      <strong>SPQR #${n}</strong>
+      <div class="admin-only">
+        <input placeholder="Name" oninput="saveWarData()">
+        <input type="file" accept="image/*" onchange="loadImage(this)">
+      </div>
+      <img style="display:none">
     </div>
 
     <div class="middle">
-      attacks<br>
-      <select ${role==="viewer"?"disabled":""}>
-        ${targets()}
-      </select>
+      attacks →<br>
+      <select onchange="saveWarData()">${enemyOptions()}</select>
     </div>
 
-    <div class="base" style="text-align:right">
-      <b>#${i}</b><br>
-      ${role==="admin"?`<input placeholder="Name"><input type="file" onchange="loadNext(this)">`:""}
-      <img>
+    <div class="base right">
+      <strong>Enemy #${n}</strong>
+      <div class="admin-only">
+        <input placeholder="Name" oninput="saveWarData()">
+        <input type="file" accept="image/*" onchange="loadImage(this)">
+      </div>
+      <img style="display:none">
     </div>
-  </div>`;
+  `;
+  return row;
 }
 
-function targets(){
-  let t="";
-  for(let i=1;i<=warSize;i++) t+=`<option>#${i}</option>`;
-  return t;
+// Options for attacks
+function enemyOptions(){
+  let o = "<option>-- target --</option>";
+  for(let i=1;i<=warSize;i++) o += `<option>Enemy #${i}</option>`;
+  return o;
 }
 
-function loadImg(i,id){
-  document.getElementById(id).src=URL.createObjectURL(i.files[0]);
+// Load image
+function loadImage(input){
+  const img = input.parentElement.nextElementSibling;
+  img.src = URL.createObjectURL(input.files[0]);
+  img.style.display = "block";
+  saveWarData();
 }
-function loadNext(i){
-  i.nextElementSibling.src=URL.createObjectURL(i.files[0]);
+
+// Load clan logo
+function loadClanLogo(input, id, storageKey){
+  const img = document.getElementById(id);
+  img.src = URL.createObjectURL(input.files[0]);
+  img.style.display = "block";
+  // Save logo persistently for SPQR only
+  if(storageKey === 'spqrLogoData') localStorage.setItem(storageKey, img.src);
+  if(storageKey === 'enemyLogoData') saveWarData();
+}
+
+// Update enemy name
+function updateEnemyName(){
+  document.getElementById("enemyName").textContent = document.getElementById("enemyNameInput").value || "Enemy Clan";
+  saveWarData();
+}
+
+// Save war data in LocalStorage
+function saveWarData(){
+  const data = {
+    warSize,
+    enemyName: document.getElementById("enemyNameInput") ? document.getElementById("enemyNameInput").value : "Enemy Clan",
+    enemyLogo: document.getElementById("enemyLogo").src || "",
+    rows: []
+  };
+  const map = document.getElementById("warMap");
+  const warRows = map.querySelectorAll(".war-row");
+  warRows.forEach(row => {
+    const rowData = {
+      spqrName: row.querySelector(".base input") ? row.querySelector(".base input").value : "",
+      spqrImg: row.querySelector(".base img") ? row.querySelector(".base img").src : "",
+      enemyName: row.querySelector(".base.right input") ? row.querySelector(".base.right input").value : "",
+      enemyImg: row.querySelector(".base.right img") ? row.querySelector(".base.right img").src : "",
+      target: row.querySelector(".middle select").value
+    };
+    data.rows.push(rowData);
+  });
+  localStorage.setItem("warData", JSON.stringify(data));
+}
+
+// Load war data from LocalStorage
+function loadWarFromStorage(){
+  const data = JSON.parse(localStorage.getItem("warData"));
+  if(!data) return;
+  warSize = data.warSize;
+  document.getElementById("warSize").value = warSize;
+  generateWarMap();
+  document.getElementById("enemyNameInput").value = data.enemyName;
+  updateEnemyName();
+  if(data.enemyLogo) document.getElementById("enemyLogo").src = data.enemyLogo;
+  const rows = document.getElementById("warMap").querySelectorAll(".war-row");
+  data.rows.forEach((r,i) => {
+    if(rows[i]){
+      if(rows[i].querySelector(".base input")) rows[i].querySelector(".base input").value = r.spqrName;
+      if(rows[i].querySelector(".base img") && r.spqrImg) { rows[i].querySelector(".base img").src = r.spqrImg; rows[i].querySelector(".base img").style.display="block";}
+      if(rows[i].querySelector(".base.right input")) rows[i].querySelector(".base.right input").value = r.enemyName;
+      if(rows[i].querySelector(".base.right img") && r.enemyImg) { rows[i].querySelector(".base.right img").src = r.enemyImg; rows[i].querySelector(".base.right img").style.display="block";}
+      if(rows[i].querySelector(".middle select")) rows[i].querySelector(".middle select").value = r.target;
+    }
+  });
+}
+
+// Delete war (keep SPQR name/logo)
+function deleteWar(){
+  localStorage.removeItem("warData");
+  localStorage.removeItem("enemyLogoData");
+  localStorage.removeItem("warSize");
+  document.getElementById("warMap").innerHTML = "";
+  document.getElementById("enemyNameInput").value = "";
+  updateEnemyName();
 }
 </script>
 
