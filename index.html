@@ -92,6 +92,11 @@ button, select, input {
   text-align: center;
   margin-bottom: 10px;
 }
+
+.war-row input:disabled {
+  background: #eee;
+  cursor: not-allowed;
+}
 </style>
 </head>
 <body>
@@ -160,12 +165,10 @@ button, select, input {
 <script>
 const ADMIN_PASSWORD = "ILikeFeet";
 const MEMBER_PASSWORD = "ForzaLazio";
-
 let isAdmin = false;
 let isMember = false;
 let warSize = 0;
 
-// Load persistent SPQR name/logo
 document.addEventListener("DOMContentLoaded", () => {
   const spqrLogoData = localStorage.getItem('spqrLogoData');
   if(spqrLogoData){
@@ -175,7 +178,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-// Login function
 function login(type){
   if(type === 'admin' && document.getElementById("adminPass").value === ADMIN_PASSWORD){
     isAdmin = true;
@@ -193,9 +195,12 @@ function login(type){
 function toggleViews(){
   document.querySelectorAll(".admin-only").forEach(el => el.style.display = isAdmin ? "block" : "none");
   document.querySelectorAll(".member-only").forEach(el => el.style.display = isMember ? "block" : "none");
+  if(isAdmin || isMember){
+    document.getElementById("warMap").style.display = "block";
+    document.getElementById("warControls").style.display = isAdmin ? "block" : "none";
+  }
 }
 
-// Start war
 function startWar(){
   warSize = parseInt(document.getElementById("warSize").value);
   localStorage.setItem("warSize", warSize);
@@ -203,20 +208,25 @@ function startWar(){
   saveWarData();
 }
 
-// Generate war rows
 function generateWarMap(){
   const map = document.getElementById("warMap");
   map.innerHTML = "";
   for(let i=1; i<=warSize; i++){
     map.appendChild(createRow(i));
   }
+  if(isMember && !isAdmin){
+    const rows = map.querySelectorAll(".war-row");
+    rows.forEach(row => {
+      row.querySelectorAll(".base input, .base.right input, .base input[type=file], .base.right input[type=file]").forEach(inp => {
+        inp.disabled = true;
+      });
+    });
+  }
 }
 
-// Create a single row
 function createRow(n){
   const row = document.createElement("div");
   row.className = "war-row";
-
   row.innerHTML = `
     <div class="base">
       <strong>SPQR #${n}</strong>
@@ -244,14 +254,12 @@ function createRow(n){
   return row;
 }
 
-// Options for attacks
 function enemyOptions(){
   let o = "<option>-- target --</option>";
   for(let i=1;i<=warSize;i++) o += `<option>Enemy #${i}</option>`;
   return o;
 }
 
-// Load image
 function loadImage(input){
   const img = input.parentElement.nextElementSibling;
   img.src = URL.createObjectURL(input.files[0]);
@@ -259,23 +267,19 @@ function loadImage(input){
   saveWarData();
 }
 
-// Load clan logo
 function loadClanLogo(input, id, storageKey){
   const img = document.getElementById(id);
   img.src = URL.createObjectURL(input.files[0]);
   img.style.display = "block";
-  // Save logo persistently for SPQR only
   if(storageKey === 'spqrLogoData') localStorage.setItem(storageKey, img.src);
   if(storageKey === 'enemyLogoData') saveWarData();
 }
 
-// Update enemy name
 function updateEnemyName(){
   document.getElementById("enemyName").textContent = document.getElementById("enemyNameInput").value || "Enemy Clan";
   saveWarData();
 }
 
-// Save war data in LocalStorage
 function saveWarData(){
   const data = {
     warSize,
@@ -298,7 +302,6 @@ function saveWarData(){
   localStorage.setItem("warData", JSON.stringify(data));
 }
 
-// Load war data from LocalStorage
 function loadWarFromStorage(){
   const data = JSON.parse(localStorage.getItem("warData"));
   if(!data) return;
@@ -318,9 +321,15 @@ function loadWarFromStorage(){
       if(rows[i].querySelector(".middle select")) rows[i].querySelector(".middle select").value = r.target;
     }
   });
+  if(isMember && !isAdmin){
+    rows.forEach(row => {
+      row.querySelectorAll(".base input, .base.right input, .base input[type=file], .base.right input[type=file]").forEach(inp => {
+        inp.disabled = true;
+      });
+    });
+  }
 }
 
-// Delete war (keep SPQR name/logo)
 function deleteWar(){
   localStorage.removeItem("warData");
   localStorage.removeItem("enemyLogoData");
