@@ -1,238 +1,140 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>SPQR Clan War</title>
+<title>Clan War</title>
 
 <style>
-body {
-  font-family: Arial, sans-serif;
-  background: #dfe6eb;
-  padding: 15px;
+body { font-family: Arial; background:#e5e9ee; padding:10px; }
+.hidden { display:none; }
+
+header {
+  display:flex; justify-content:space-between;
+  background:#2c3e50; color:white;
+  padding:10px; border-radius:8px;
 }
 
-#loginBox {
-  text-align: center;
-  margin-bottom: 10px;
+.clan {
+  width:45%; display:flex; align-items:center; gap:10px;
 }
 
-button, select, input {
-  padding: 5px;
-  margin: 4px;
+.clan img { width:60px; height:60px; object-fit:cover; background:white; }
+
+.controls, .login {
+  text-align:center; margin:10px 0;
 }
 
-.admin-only {
-  display: none;
+.row {
+  display:flex; align-items:center;
+  background:white; margin-top:5px;
+  padding:5px; border-radius:6px;
 }
 
-.war-container {
-  background: white;
-  border-radius: 10px;
-  overflow: hidden;
-}
+.base { width:40%; }
+.base img { width:70px; height:70px; object-fit:cover; display:block; }
 
-.header {
-  display: flex;
-  justify-content: space-between;
-  padding: 12px;
-  background: #2c3e50;
-  color: white;
-  align-items: center;
-}
+.middle { width:20%; text-align:center; }
 
-.clan-header {
-  width: 45%;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.clan-header.right {
-  justify-content: flex-end;
-  text-align: right;
-}
-
-.clan-header img {
-  width: 60px;
-  height: 60px;
-  object-fit: cover;
-  background: white;
-  border-radius: 6px;
-}
-
-.war-row {
-  display: flex;
-  align-items: center;
-  border-top: 1px solid #ddd;
-  padding: 8px;
-}
-
-.base {
-  width: 40%;
-}
-
-.base.right {
-  text-align: right;
-}
-
-.base img {
-  width: 75px;
-  height: 75px;
-  object-fit: cover;
-  border: 1px solid #ccc;
-  margin-top: 5px;
-}
-
-.middle {
-  width: 20%;
-  text-align: center;
-  font-weight: bold;
-}
+input, select, button { margin:3px; }
 </style>
 </head>
 
 <body>
 
-<div id="loginBox">
-  <h3>Admin Login</h3>
-  <input type="password" id="adminPass" placeholder="Admin password">
+<div class="login">
+  <h3>Login</h3>
+  <input id="pass" type="password" placeholder="Password">
   <button onclick="login()">Login</button>
 </div>
 
-<div class="admin-only" style="text-align:center;">
+<div class="controls hidden" id="adminControls">
   War Size:
-  <select id="warSize">
-    <option>10</option>
-    <option>15</option>
-    <option>20</option>
-    <option>25</option>
-    <option>30</option>
-    <option>35</option>
-    <option>40</option>
-    <option>45</option>
-    <option>50</option>
+  <select id="size">
+    <option>10</option><option>15</option><option>20</option>
+    <option>25</option><option>30</option><option>35</option>
+    <option>40</option><option>45</option><option>50</option>
   </select>
-  <button onclick="startWar()">Create War</button>
+  <button onclick="createWar()">Start War</button>
 </div>
 
-<div class="war-container">
-
-  <!-- HEADERS -->
-  <div class="header">
-    <div class="clan-header">
-      <img id="spqrLogo" style="display:none">
-      <div>
-        <strong>SPQR</strong><br>
-        <span class="admin-only">
-          Logo: <input type="file" accept="image/*" onchange="loadClanLogo(this,'spqrLogo')">
-        </span>
-      </div>
-    </div>
-
-    <div class="clan-header right">
-      <div>
-        <strong id="enemyName">Enemy Clan</strong><br>
-        <span class="admin-only">
-          Name:
-          <input id="enemyNameInput" placeholder="Enemy name" oninput="updateEnemyName()"><br>
-          Logo:
-          <input type="file" accept="image/*" onchange="loadClanLogo(this,'enemyLogo')">
-        </span>
-      </div>
-      <img id="enemyLogo" style="display:none">
+<header>
+  <div class="clan">
+    <img id="ourLogo">
+    <div>
+      <input id="ourName" value="SPQR">
+      <input type="file" onchange="loadImg(this,'ourLogo')">
     </div>
   </div>
 
-  <!-- WAR MAP -->
-  <div id="warMap"></div>
+  <div class="clan" style="justify-content:flex-end;">
+    <div>
+      <input id="enemyName" value="Enemy Clan">
+      <input type="file" onchange="loadImg(this,'enemyLogo')">
+    </div>
+    <img id="enemyLogo">
+  </div>
+</header>
 
-</div>
+<div id="war"></div>
 
 <script>
-const ADMIN_PASSWORD = "ILikeFeet"; // <- admin password
-let isAdmin = false;
+const ADMIN = "ILikeFeet";
+const MEMBER = "ForzaLazio";
+let role = "viewer";
 let warSize = 0;
 
-function login() {
-  if (document.getElementById("adminPass").value === ADMIN_PASSWORD) {
-    isAdmin = true;
+function login(){
+  const p = document.getElementById("pass").value;
+  if(p===ADMIN) role="admin";
+  else if(p===MEMBER) role="member";
+  document.querySelector(".login").classList.add("hidden");
+  if(role==="admin") document.getElementById("adminControls").classList.remove("hidden");
+}
+
+function createWar(){
+  warSize = document.getElementById("size").value;
+  const w = document.getElementById("war");
+  w.innerHTML = "";
+  for(let i=1;i<=warSize;i++){
+    w.innerHTML += row(i);
   }
-  document.getElementById("loginBox").style.display = "none";
-  toggleAdmin();
 }
 
-function toggleAdmin() {
-  document.querySelectorAll(".admin-only").forEach(el => {
-    el.style.display = isAdmin ? "block" : "none";
-  });
-}
-
-function startWar() {
-  warSize = parseInt(document.getElementById("warSize").value);
-  const map = document.getElementById("warMap");
-  map.innerHTML = "";
-
-  for (let i = 1; i <= warSize; i++) {
-    map.appendChild(createRow(i));
-  }
-
-  toggleAdmin();
-}
-
-function createRow(n) {
-  const row = document.createElement("div");
-  row.className = "war-row";
-
-  row.innerHTML = `
+function row(i){
+  return `
+  <div class="row">
     <div class="base">
-      <strong>SPQR #${n}</strong>
-      <div class="admin-only">
-        <input placeholder="Name">
-        <input type="file" accept="image/*" onchange="loadImage(this)">
-      </div>
-      <img style="display:none">
+      <b>#${i}</b><br>
+      ${role==="admin"?`<input placeholder="Name"><input type="file" onchange="loadNext(this)">`:""}
+      <img>
     </div>
 
     <div class="middle">
-      attacks →
-      <br>
-      <select>${enemyOptions()}</select>
+      attacks<br>
+      <select ${role==="viewer"?"disabled":""}>
+        ${targets()}
+      </select>
     </div>
 
-    <div class="base right">
-      <strong>Enemy #${n}</strong>
-      <div class="admin-only">
-        <input placeholder="Name">
-        <input type="file" accept="image/*" onchange="loadImage(this)">
-      </div>
-      <img style="display:none">
+    <div class="base" style="text-align:right">
+      <b>#${i}</b><br>
+      ${role==="admin"?`<input placeholder="Name"><input type="file" onchange="loadNext(this)">`:""}
+      <img>
     </div>
-  `;
-
-  return row;
+  </div>`;
 }
 
-function enemyOptions() {
-  let o = "<option>-- target --</option>";
-  for (let i = 1; i <= warSize; i++) o += `<option>Enemy #${i}</option>`;
-  return o;
+function targets(){
+  let t="";
+  for(let i=1;i<=warSize;i++) t+=`<option>#${i}</option>`;
+  return t;
 }
 
-function loadImage(input) {
-  const img = input.parentElement.nextElementSibling;
-  img.src = URL.createObjectURL(input.files[0]);
-  img.style.display = "block";
+function loadImg(i,id){
+  document.getElementById(id).src=URL.createObjectURL(i.files[0]);
 }
-
-function loadClanLogo(input, id) {
-  const img = document.getElementById(id);
-  img.src = URL.createObjectURL(input.files[0]);
-  img.style.display = "block";
-}
-
-function updateEnemyName() {
-  document.getElementById("enemyName").textContent =
-    document.getElementById("enemyNameInput").value || "Enemy Clan";
+function loadNext(i){
+  i.nextElementSibling.src=URL.createObjectURL(i.files[0]);
 }
 </script>
 
