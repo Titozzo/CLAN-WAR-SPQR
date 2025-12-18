@@ -20,7 +20,7 @@ button, select, input {
   margin: 4px;
 }
 
-.admin-only, .member-only {
+.admin-only {
   display: none;
 }
 
@@ -88,14 +88,12 @@ button, select, input {
   font-weight: bold;
 }
 
-#warControls {
-  text-align: center;
-  margin-bottom: 10px;
+#warmap {
+  display: block;
 }
 
-.war-row input:disabled {
+input:disabled {
   background: #eee;
-  cursor: not-allowed;
 }
 </style>
 </head>
@@ -133,7 +131,6 @@ button, select, input {
 </div>
 
 <div class="war-container">
-
   <div class="header">
     <div class="clan-header">
       <img id="spqrLogo" style="display:none">
@@ -165,6 +162,7 @@ button, select, input {
 <script>
 const ADMIN_PASSWORD = "ILikeFeet";
 const MEMBER_PASSWORD = "ForzaLazio";
+
 let isAdmin = false;
 let isMember = false;
 let warSize = 0;
@@ -183,22 +181,13 @@ function login(type){
     isAdmin = true;
   } else if(type === 'member' && document.getElementById("memberPass").value === MEMBER_PASSWORD){
     isMember = true;
-  } else{
+  } else {
     alert("Wrong password");
     return;
   }
   document.getElementById("loginBox").style.display = "none";
-  toggleViews();
+  document.getElementById("warControls").style.display = isAdmin ? "block" : "none";
   loadWarFromStorage();
-}
-
-function toggleViews(){
-  document.querySelectorAll(".admin-only").forEach(el => el.style.display = isAdmin ? "block" : "none");
-  document.querySelectorAll(".member-only").forEach(el => el.style.display = isMember ? "block" : "none");
-  if(isAdmin || isMember){
-    document.getElementById("warMap").style.display = "block";
-    document.getElementById("warControls").style.display = isAdmin ? "block" : "none";
-  }
 }
 
 function startWar(){
@@ -214,14 +203,6 @@ function generateWarMap(){
   for(let i=1; i<=warSize; i++){
     map.appendChild(createRow(i));
   }
-  if(isMember && !isAdmin){
-    const rows = map.querySelectorAll(".war-row");
-    rows.forEach(row => {
-      row.querySelectorAll(".base input, .base.right input, .base input[type=file], .base.right input[type=file]").forEach(inp => {
-        inp.disabled = true;
-      });
-    });
-  }
 }
 
 function createRow(n){
@@ -230,7 +211,7 @@ function createRow(n){
   row.innerHTML = `
     <div class="base">
       <strong>SPQR #${n}</strong>
-      <div class="admin-only">
+      <div class="${isAdmin ? '' : 'hidden'}">
         <input placeholder="Name" oninput="saveWarData()">
         <input type="file" accept="image/*" onchange="loadImage(this)">
       </div>
@@ -244,7 +225,7 @@ function createRow(n){
 
     <div class="base right">
       <strong>Enemy #${n}</strong>
-      <div class="admin-only">
+      <div class="${isAdmin ? '' : 'hidden'}">
         <input placeholder="Name" oninput="saveWarData()">
         <input type="file" accept="image/*" onchange="loadImage(this)">
       </div>
@@ -256,7 +237,7 @@ function createRow(n){
 
 function enemyOptions(){
   let o = "<option>-- target --</option>";
-  for(let i=1;i<=warSize;i++) o += `<option>Enemy #${i}</option>`;
+  for(let i=1; i<=warSize; i++) o += `<option>Enemy #${i}</option>`;
   return o;
 }
 
@@ -287,17 +268,14 @@ function saveWarData(){
     enemyLogo: document.getElementById("enemyLogo").src || "",
     rows: []
   };
-  const map = document.getElementById("warMap");
-  const warRows = map.querySelectorAll(".war-row");
-  warRows.forEach(row => {
-    const rowData = {
+  document.querySelectorAll(".war-row").forEach(row => {
+    data.rows.push({
       spqrName: row.querySelector(".base input") ? row.querySelector(".base input").value : "",
       spqrImg: row.querySelector(".base img") ? row.querySelector(".base img").src : "",
       enemyName: row.querySelector(".base.right input") ? row.querySelector(".base.right input").value : "",
       enemyImg: row.querySelector(".base.right img") ? row.querySelector(".base.right img").src : "",
       target: row.querySelector(".middle select").value
-    };
-    data.rows.push(rowData);
+    });
   });
   localStorage.setItem("warData", JSON.stringify(data));
 }
@@ -308,26 +286,17 @@ function loadWarFromStorage(){
   warSize = data.warSize;
   document.getElementById("warSize").value = warSize;
   generateWarMap();
-  document.getElementById("enemyNameInput").value = data.enemyName;
-  updateEnemyName();
   if(data.enemyLogo) document.getElementById("enemyLogo").src = data.enemyLogo;
-  const rows = document.getElementById("warMap").querySelectorAll(".war-row");
-  data.rows.forEach((r,i) => {
-    if(rows[i]){
-      if(rows[i].querySelector(".base input")) rows[i].querySelector(".base input").value = r.spqrName;
-      if(rows[i].querySelector(".base img") && r.spqrImg) { rows[i].querySelector(".base img").src = r.spqrImg; rows[i].querySelector(".base img").style.display="block";}
-      if(rows[i].querySelector(".base.right input")) rows[i].querySelector(".base.right input").value = r.enemyName;
-      if(rows[i].querySelector(".base.right img") && r.enemyImg) { rows[i].querySelector(".base.right img").src = r.enemyImg; rows[i].querySelector(".base.right img").style.display="block";}
-      if(rows[i].querySelector(".middle select")) rows[i].querySelector(".middle select").value = r.target;
+  if(document.getElementById("enemyNameInput")) document.getElementById("enemyNameInput").value = data.enemyName;
+  document.querySelectorAll(".war-row").forEach((row, i) => {
+    if(data.rows[i]){
+      if(row.querySelector(".base input")) row.querySelector(".base input").value = data.rows[i].spqrName;
+      if(row.querySelector(".base img")) row.querySelector(".base img").src = data.rows[i].spqrImg;
+      if(row.querySelector(".base.right input")) row.querySelector(".base.right input").value = data.rows[i].enemyName;
+      if(row.querySelector(".base.right img")) row.querySelector(".base.right img").src = data.rows[i].enemyImg;
+      row.querySelector(".middle select").value = data.rows[i].target;
     }
   });
-  if(isMember && !isAdmin){
-    rows.forEach(row => {
-      row.querySelectorAll(".base input, .base.right input, .base input[type=file], .base.right input[type=file]").forEach(inp => {
-        inp.disabled = true;
-      });
-    });
-  }
 }
 
 function deleteWar(){
@@ -335,10 +304,10 @@ function deleteWar(){
   localStorage.removeItem("enemyLogoData");
   localStorage.removeItem("warSize");
   document.getElementById("warMap").innerHTML = "";
-  document.getElementById("enemyNameInput").value = "";
-  updateEnemyName();
 }
 </script>
 
 </body>
+</html>
+
 </html>
