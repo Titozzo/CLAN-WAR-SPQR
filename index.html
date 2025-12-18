@@ -213,7 +213,7 @@ function createRow(n) {
   row.innerHTML = `
     <div class="base">
       <strong>SPQR #${n}</strong>
-      <div class="${isAdmin ? '' : 'hidden'}">
+      <div>
         <input placeholder="Name" oninput="saveWarData()">
         <input type="file" accept="image/*" onchange="loadImage(this)">
       </div>
@@ -227,7 +227,7 @@ function createRow(n) {
 
     <div class="base right">
       <strong>Enemy #${n}</strong>
-      <div class="${isAdmin ? '' : 'hidden'}">
+      <div>
         <input placeholder="Name" oninput="saveWarData()">
         <input type="file" accept="image/*" onchange="loadImage(this)">
       </div>
